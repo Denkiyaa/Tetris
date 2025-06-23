@@ -1,0 +1,60 @@
+.tetrisWrapper {
+  width: 100vw;
+  height: 100vh;
+  background: #121212;
+  overflow-y: auto; /* Küçük ekranlarda kaydırma */
+  outline: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.tetris {
+  display: flex;
+  flex-direction: row; /* Varsayılan olarak yan yana */
+  align-items: flex-start;
+  gap: 20px;
+  width: 100%;
+  max-width: 800px; /* Genel konteyner genişliği */
+  justify-content: center;
+}
+
+/* Küçük ekranlar için (max 768px) */
+@media (max-width: 768px) {
+  .tetris {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.tetris aside {
+  width: 100%;
+  min-width: 200px;
+  max-width: 250px;
+  display: block;
+  padding: 0 10px;
+}
+
+.startButton {
+  box-sizing: border-box;
+  margin: 20px 0 0 0;
+  padding: 15px;
+  min-height: 30px;
+  width: 100%;
+  border-radius: 5px;
+  border: none;
+  color: white;
+  background: #4CAF50;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 1rem;
+  outline: none;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.startButton:hover {
+    background-color: #45a049;
+}

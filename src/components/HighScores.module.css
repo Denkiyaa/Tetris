@@ -1,0 +1,47 @@
+.highScores {
+    width: 100%;
+    margin-top: 30px;
+}
+
+.highScores h2 {
+  font-size: 0.8rem;
+  color: #aaa;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.scoreList {
+  list-style-type: decimal-leading-zero;
+  padding-left: 30px;
+  margin: 0;
+  color: #f0f0f0;
+}
+
+.scoreList li {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 1.1rem;
+}
+
+.scoreList span:first-child {
+    font-weight: bold;
+    color: #66d9ef;
+}
+
+.scoreList p {
+    text-align: center;
+    font-style: italic;
+    color: #888;
+}
+
+.message {
+    text-align: center;
+    font-style: italic;
+    color: #888;
+    margin-top: 15px;
+  }
+  .error {
+      color: #ff5252;
+      font-weight: bold;
+  }

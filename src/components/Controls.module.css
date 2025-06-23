@@ -1,0 +1,35 @@
+.controls {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .dpad, .actions {
+    display: flex;
+    gap: 15px;
+  }
+  
+  .controls button {
+    width: 60px;
+    height: 60px;
+    font-size: 2rem;
+    font-weight: bold;
+    color: white;
+    background: #282c34;
+    border: 2px solid #61dafb;
+    border-radius: 50%; /* Yuvarlak butonlar */
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, transform 0.1s;
+  }
+  
+  .controls button:active {
+    background-color: #4a505c;
+    transform: scale(0.95);
+  }

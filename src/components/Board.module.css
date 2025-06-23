@@ -1,0 +1,33 @@
+.board {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(20, 1fr);
+    gap: 1px;
+    border: 3px solid #444;
+    /* Genişliği daha belirgin yapıyoruz, yükseklik kendini oranlayacak */
+    width: 100%;
+    max-width: 400px;
+    min-width: 300px; /* Çok küçülmesini engelle */
+    aspect-ratio: 1 / 2;
+    background: #111;
+  }
+  
+  /* ... (flashing animasyonu aynı kalabilir) ... */
+  .flashing {
+    animation: flash-animation 0.2s ease-in-out;
+  }
+  
+  @keyframes flash-animation {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+      border-color: #fff;
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(255, 255, 255, 1), 0 0 30px rgba(76, 175, 80, 0.8);
+      border-color: #f0f0f0;
+    }
+    100% {
+      box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+      border-color: #fff;
+    }
+  }

@@ -1,0 +1,5 @@
+.cell {
+    width: auto;
+    background: rgba(30, 30, 30, 0.8); /* Arka plan rengi */
+    border: 1px solid #333;
+  }

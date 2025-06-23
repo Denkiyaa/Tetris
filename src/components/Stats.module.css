@@ -1,0 +1,29 @@
+.stats {
+    width: 150px;
+    text-align: left;
+    padding: 0 20px;
+  }
+  
+  .stats h2 {
+    font-size: 0.8rem;
+    color: #aaa;
+    margin: 20px 0 5px 0;
+  }
+  
+  .stats p {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #4CAF50;
+    margin: 0;
+  }
+  
+  .gameOver {
+      margin-top: 40px;
+      text-align: center;
+      color: #ff5252;
+  }
+  
+  .gameOver p {
+      font-size: 1.2rem;
+      color: #ff5252;
+  }
