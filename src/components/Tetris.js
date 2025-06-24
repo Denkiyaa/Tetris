@@ -8,6 +8,8 @@ import Stats from './Stats';
 import NicknameForm from './NicknameForm';
 import HighScores from './HighScores';
 import Controls from './Controls';
+import HelpModal from './HelpModal';
+import NextPiece from './NextPiece';
 import styles from './Tetris.module.css';
 
 const Tetris = () => {
@@ -16,7 +18,8 @@ const Tetris = () => {
   const [gamePhase, setGamePhase] = useState('welcome');
   const [nickname, setNickname] = useState('');
 
-  const [player, updatePlayerPos, resetPlayer, playerRotate] = usePlayer();
+  // [UYUMLULUK DÜZELTMESİ] Artık 'nextPiece' de hook'tan alınıyor.
+  const [player, nextPiece, updatePlayerPos, resetPlayer, playerRotate] = usePlayer();
   const [board, setBoard, rowsCleared] = useBoard(player, resetPlayer);
   
   const [score, setScore] = useState(0);
@@ -25,18 +28,21 @@ const Tetris = () => {
   
   const [isFlashing, setIsFlashing] = useState(false);
   const { scores, loading, error, addScore } = useHighScores();
+  
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const actionLock = useRef(false); // Tuş tekrarını engellemek için kilit
 
+  // [BUG DÜZELTMESİ] Skor döngüsü, 'level' bağımlılığı kaldırılarak düzeltildi.
   useEffect(() => {
     if (rowsCleared > 0) {
-      // [BUG 2 DÜZELTMESİ] Puanlama sistemi isteğiniz doğrultusunda daha doğrusal hale getirildi.
-      // 1 satır: 10, 2 satır: 30, 3 satır: 50, 4 satır: 80 puan.
-      const linePoints = [10, 30, 50, 80]; 
+      const linePoints = [10, 30, 60, 100]; // İstediğiniz doğrusal puanlama
       setScore(prev => prev + linePoints[rowsCleared - 1] * (level + 1));
       setRows(prev => prev + rowsCleared);
       setIsFlashing(true);
     }
-  }, [rowsCleared, level]);
-
+  }, [rowsCleared]);
+  
+  // Seviye atlama mantığı ayrı ve temiz.
   useEffect(() => {
     const newLevel = Math.floor(rows / 10);
     if (newLevel > level) {
@@ -45,125 +51,55 @@ const Tetris = () => {
     }
   }, [rows, level]);
 
-  useEffect(() => {
-    if (isFlashing) {
-      const timeout = setTimeout(() => setIsFlashing(false), 200);
-      return () => clearTimeout(timeout);
-    }
-  }, [isFlashing]);
+  // Diğer useEffect'ler...
+  useEffect(() => { if (isFlashing) { const timeout = setTimeout(() => setIsFlashing(false), 200); return () => clearTimeout(timeout); } }, [isFlashing]);
+  useEffect(() => { if (gameOver) { addScore(nickname, score); } }, [gameOver, score, nickname, addScore]);
 
+  // [BUG DÜZELTMESİ] Oyun sonu ve yeni parça oluşturma mantığı birleştirildi.
   useEffect(() => {
-    if (gameOver) {
-      addScore(nickname, score);
-    }
-  }, [gameOver, score, nickname, addScore]);
-
-  const movePlayer = (dir) => {
-    if (gameOver) return;
-    if (!checkCollision(player, board, { x: dir, y: 0 })) {
-      updatePlayerPos({ x: dir, y: 0, collided: false });
-    }
-  };
-
-  const drop = () => {
-    if (!checkCollision(player, board, { x: 0, y: 1 })) {
-      updatePlayerPos({ x: 0, y: 1, collided: false });
-    } else {
-      // Parça yere çarptı, ama oyun sonu kontrolünü buradan kaldırıyoruz.
-      // Bu kontrol artık `player.collided` useEffect'ine taşındı.
-      updatePlayerPos({ x: 0, y: 0, collided: true });
-    }
-  };
-  
-  // [BUG 1 DÜZELTMESİ] Oyun sonu kontrolü ve yeni parça oluşturma mantığı burada birleştirildi.
-  useEffect(() => {
-    // Sadece bir parça yere çarptığında tetiklenir
     if (player.collided) {
-      // Yere çarpan parçanın pozisyonu en tepedeyse, oyunu bitir.
       if (player.pos.y < 1) {
         setGameOver(true);
         setDropTime(null);
       }
-      // Oyun bitmediyse, yeni parçayı oluştur.
       resetPlayer();
+      // Yeni parça geldikten kısa bir süre sonra tuş kilidini aç
+      setTimeout(() => { actionLock.current = false; }, 50); 
     }
   }, [player.collided, resetPlayer]);
   
-  const dropPlayer = () => {
-    if (gameOver) return;
-    setDropTime(null);
-    drop();
-  };
-
+  // Fonksiyonlar
+  const movePlayer = (dir) => { if (gameOver || actionLock.current) return; if (!checkCollision(player, board, { x: dir, y: 0 })) { updatePlayerPos({ x: dir, y: 0, collided: false }); } };
+  const drop = () => { if (!checkCollision(player, board, { x: 0, y: 1 })) { updatePlayerPos({ x: 0, y: 1, collided: false }); } else { updatePlayerPos({ x: 0, y: 0, collided: true }); } };
+  const dropPlayer = () => { if (gameOver || actionLock.current) return; setDropTime(null); drop(); };
+  
+  // [BUG DÜZELTMESİ] Kilit mekanizması ile hardDrop güncellendi
   const hardDrop = () => {
-    if (gameOver) return;
+    if (gameOver || actionLock.current) return;
+    actionLock.current = true; // Hareketi KİLİTLE
     let tempPlayer = JSON.parse(JSON.stringify(player));
-    while (!checkCollision(tempPlayer, board, { x: 0, y: 1 })) {
-      tempPlayer.pos.y += 1;
-    }
-    updatePlayerPos({
-      x: tempPlayer.pos.x - player.pos.x,
-      y: tempPlayer.pos.y - player.pos.y,
-      collided: true,
-    });
+    while (!checkCollision(tempPlayer, board, { x: 0, y: 1 })) { tempPlayer.pos.y += 1; }
+    updatePlayerPos({ x: 0, y: tempPlayer.pos.y - player.pos.y, collided: true });
   };
+  
+  const rotatePlayer = () => { if (gameOver || actionLock.current) return; playerRotate(board); };
+  const startGame = () => { setBoard(createBoard()); setDropTime(1000); resetPlayer(); setScore(0); setRows(0); setLevel(0); setGameOver(false); };
+  const handleNicknameSubmit = (name) => { setNickname(name); setGamePhase('playing'); startGame(); };
+  const keyUp = ({ keyCode }) => { if (!gameOver) { if ((keyCode === 40 || keyCode === 83) && dropTime === null && !player.collided) { setDropTime(1000 / (level + 1) + 200); } } };
+  const useInterval = (callback, delay) => { const savedCallback = useRef(); useEffect(() => { savedCallback.current = callback; }, [callback]); useEffect(() => { function tick() { savedCallback.current(); } if (delay !== null) { let id = setInterval(tick, delay); return () => clearInterval(id); } }, [delay]); };
+  useInterval(() => { if (!gameOver) drop(); }, dropTime);
+  const move = ({ keyCode }) => { const key = keyCode; if (key === 37 || key === 65) { movePlayer(-1); } else if (key === 39 || key === 68) { movePlayer(1); } else if (key === 40 || key === 83) { dropPlayer(); } else if (key === 38 || key === 87) { rotatePlayer(); } else if (key === 32) { hardDrop(); } };
 
-  const rotatePlayer = () => {
-    if (gameOver) return;
-    playerRotate(board);
-  };
-  
-  const startGame = () => {
-    setBoard(createBoard());
-    setDropTime(1000);
-    resetPlayer();
-    setScore(0);
-    setRows(0);
-    setLevel(0);
-    setGameOver(false);
-  };
-  
-  const handleNicknameSubmit = (name) => {
-    setNickname(name);
-    setGamePhase('playing');
-    startGame();
-  };
-  
-  const keyUp = ({ keyCode }) => {
-    if (!gameOver) {
-      if ((keyCode === 40 || keyCode === 83) && dropTime === null) {
-        setDropTime(1000 / (level + 1) + 200);
-      }
-    }
-  };
-  
-  const useInterval = (callback, delay) => {
-    const savedCallback = useRef();
-    useEffect(() => { savedCallback.current = callback; }, [callback]);
-    useEffect(() => {
-      function tick() { savedCallback.current(); }
-      if (delay !== null) {
-        let id = setInterval(tick, delay);
-        return () => clearInterval(id);
-      }
-    }, [delay]);
-  };
-
-  useInterval(() => { drop(); }, dropTime);
-
-  const move = ({ keyCode }) => {
-    if (!gameOver) {
-      const key = keyCode;
-      if (key === 37 || key === 65) { movePlayer(-1); } 
-      else if (key === 39 || key === 68) { movePlayer(1); } 
-      else if (key === 40 || key === 83) { dropPlayer(); } 
-      else if (key === 38 || key === 87) { rotatePlayer(); }
-      else if (key === 32) { hardDrop(); }
-    }
-  };
+  // Swipe Kontrolleri
+  const touchStartPos = useRef({ x: 0, y: 0 }); const isSwiping = useRef(false);
+  const handleTouchStart = (e) => { e.preventDefault(); touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; isSwiping.current = true; };
+  const handleTouchEnd = (e) => { if (!isSwiping.current) return; isSwiping.current = false; const deltaX = e.changedTouches[0].clientX - touchStartPos.current.x; const deltaY = e.changedTouches[0].clientY - touchStartPos.current.y; const threshold = 50; if (Math.abs(deltaX) > Math.abs(deltaY)) { if (deltaX > threshold) { movePlayer(1); } else if (deltaX < -threshold) { movePlayer(-1); } } else { if (deltaY > threshold) { hardDrop(); } else if (deltaY < -threshold) { rotatePlayer(); } } };
 
   return (
-    <div className={styles.tetrisWrapper} role="button" tabIndex="0" onKeyDown={e => move(e)} onKeyUp={keyUp}>
+    <div className={styles.tetrisWrapper} role="button" tabIndex="0" onKeyDown={e => move(e)} onKeyUp={keyUp} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onTouchMove={(e) => e.preventDefault()} >
+      {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} />}
+      <button className={styles.helpButton} onClick={() => setIsHelpOpen(true)}>?</button>
+      
       {gamePhase === 'welcome' ? (
         <NicknameForm onStart={handleNicknameSubmit} />
       ) : (
@@ -171,6 +107,7 @@ const Tetris = () => {
           <div className={styles.tetris}>
             <Board board={board} player={player} isFlashing={isFlashing} />
             <aside>
+              {nextPiece && <NextPiece piece={nextPiece} />}
               <Stats score={score} rows={rows} level={level} gameOver={gameOver} />
               <button className={styles.startButton} onClick={startGame}>
                 Yeniden Başlat
@@ -179,11 +116,8 @@ const Tetris = () => {
             </aside>
           </div>
           <Controls 
-             moveLeft={() => movePlayer(-1)}
-             moveRight={() => movePlayer(1)}
-             rotate={rotatePlayer}
-             drop={dropPlayer}
-             hardDrop={hardDrop}
+             moveLeft={() => movePlayer(-1)} moveRight={() => movePlayer(1)}
+             rotate={rotatePlayer} drop={dropPlayer} hardDrop={hardDrop}
           />
         </>
       )}

@@ -58,3 +58,20 @@
 .startButton:hover {
     background-color: #45a049;
 }
+
+/* Dosyanın en altına ekleyin */
+.helpButton {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #61dafb;
+  background-color: rgba(40, 44, 52, 0.8);
+  color: #61dafb;
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 100;
+}

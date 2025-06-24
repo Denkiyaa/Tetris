@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
-import { SHAPES, randomShape, BOARD_WIDTH } from '../gameHelpers';
-import { checkCollision } from '../gameHelpers';
+import { SHAPES, randomShape, BOARD_WIDTH, checkCollision } from '../gameHelpers';
 
 export const usePlayer = () => {
   const [player, setPlayer] = useState({
@@ -8,6 +7,9 @@ export const usePlayer = () => {
     matrix: SHAPES[0].shape,
     collided: false,
   });
+  
+  // Sonraki parçayı tutmak için yeni state eklendi
+  const [nextPiece, setNextPiece] = useState(SHAPES[0].shape);
 
   const rotate = (matrix) => {
     const rotated = matrix.map((_, index) => matrix.map(col => col[index]));
@@ -40,13 +42,18 @@ export const usePlayer = () => {
     }));
   };
 
+  // resetPlayer artık bir sonraki parçayı oyuna sokuyor ve yeni bir "sonraki" oluşturuyor
   const resetPlayer = useCallback(() => {
     setPlayer({
       pos: { x: BOARD_WIDTH / 2 - 2, y: 0 },
-      matrix: randomShape().shape,
+      // Eğer oyun yeni başlıyorsa rastgele bir parça al, değilse sıradaki parçayı al
+      matrix: nextPiece === SHAPES[0].shape ? randomShape().shape : nextPiece,
       collided: false,
     });
-  }, []);
+    // Bir sonraki parçayı daima rastgele yenile
+    setNextPiece(randomShape().shape);
+  }, [nextPiece]);
 
-  return [player, updatePlayerPos, resetPlayer, playerRotate];
+  // Hook artık dışarıya 5 değer döndürüyor: player, nextPiece, ve 3 fonksiyon
+  return [player, nextPiece, updatePlayerPos, resetPlayer, playerRotate];
 };
