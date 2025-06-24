@@ -4,12 +4,12 @@ import { SHAPES, randomShape, BOARD_WIDTH, checkCollision } from '../gameHelpers
 export const usePlayer = () => {
   const [player, setPlayer] = useState({
     pos: { x: 0, y: 0 },
-    shape: SHAPES[0].shape, // Artık matris yerine 'shape' diyoruz
+    // Başlangıçta matrix'i 'null' yapıyoruz. Bu, "henüz parça yok" anlamına gelir.
+    matrix: null, 
     collided: false,
   });
   
-  // State'de artık parçanın kendisi yerine sadece ID'sini (harfini) tutuyoruz
-  const [nextPieceId, setNextPieceId] = useState(0);
+  const [nextPiece, setNextPiece] = useState(SHAPES[0].shape);
 
   const rotate = (matrix) => {
     const rotated = matrix.map((_, index) => matrix.map(col => col[index]));
@@ -17,16 +17,19 @@ export const usePlayer = () => {
   };
 
   const playerRotate = (board) => {
+    // Parça yoksa döndürme
+    if (!player.matrix) return;
+    
     const clonedPlayer = JSON.parse(JSON.stringify(player));
-    clonedPlayer.shape = rotate(clonedPlayer.shape);
+    clonedPlayer.matrix = rotate(clonedPlayer.matrix);
 
     const pos = clonedPlayer.pos.x;
     let offset = 1;
     while (checkCollision(clonedPlayer, board, { x: 0, y: 0 })) {
       clonedPlayer.pos.x += offset;
       offset = -(offset + (offset > 0 ? 1 : -1));
-      if (offset > clonedPlayer.shape[0].length) {
-        clonedPlayer.shape = rotate(clonedPlayer.shape); // Rotate back
+      if (offset > clonedPlayer.matrix[0].length) {
+        clonedPlayer.matrix = rotate(clonedPlayer.matrix);
         clonedPlayer.pos.x = pos;
         return;
       }
@@ -43,16 +46,13 @@ export const usePlayer = () => {
   };
 
   const resetPlayer = useCallback(() => {
-    // Önceki "nextPieceId"yi kullanarak mevcut oyuncuyu ayarla
     setPlayer({
       pos: { x: BOARD_WIDTH / 2 - 2, y: 0 },
-      shape: SHAPES[nextPieceId] ? SHAPES[nextPieceId].shape : randomShape().shape, // ID'den şekli al
+      matrix: nextPiece === SHAPES[0].shape ? randomShape().shape : nextPiece,
       collided: false,
     });
-    // Bir sonraki tur için YENİ bir rastgele ID oluştur
-    setNextPieceId(randomShape().shape[1][1]); // Şeklin ortasından harfi alarak ID'yi belirliyoruz
-  }, [nextPieceId]);
+    setNextPiece(randomShape().shape);
+  }, [nextPiece]);
 
-  // Dışarıya artık 'nextPiece' objesini ID'ye göre oluşturup gönderiyoruz
-  return [player, SHAPES[nextPieceId], updatePlayerPos, resetPlayer, playerRotate];
+  return [player, nextPiece, updatePlayerPos, resetPlayer, playerRotate];
 };

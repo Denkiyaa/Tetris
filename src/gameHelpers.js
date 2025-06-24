@@ -26,6 +26,11 @@ export const randomShape = () => {
 
 // Çarpışma kontrolü yapan fonksiyon
 export const checkCollision = (player, board, { x: moveX, y: moveY }) => {
+  // [GÜVENLİK KONTROLÜ] Parça veya matrisi yoksa, çarpışma yok say ve hatayı engelle.
+  if (!player.matrix) {
+    return false;
+  }
+
   for (let y = 0; y < player.matrix.length; y += 1) {
     for (let x = 0; x < player.matrix[y].length; x += 1) {
       if (player.matrix[y][x] !== 0) {
