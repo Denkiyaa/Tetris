@@ -4,12 +4,12 @@ import { SHAPES, randomShape, BOARD_WIDTH, checkCollision } from '../gameHelpers
 export const usePlayer = () => {
   const [player, setPlayer] = useState({
     pos: { x: 0, y: 0 },
-    matrix: SHAPES[0].shape,
+    shape: SHAPES[0].shape, // Artık matris yerine 'shape' diyoruz
     collided: false,
   });
   
-  // Sonraki parçayı tutmak için yeni state eklendi
-  const [nextPiece, setNextPiece] = useState(SHAPES[0].shape);
+  // State'de artık parçanın kendisi yerine sadece ID'sini (harfini) tutuyoruz
+  const [nextPieceId, setNextPieceId] = useState(0);
 
   const rotate = (matrix) => {
     const rotated = matrix.map((_, index) => matrix.map(col => col[index]));
@@ -18,15 +18,15 @@ export const usePlayer = () => {
 
   const playerRotate = (board) => {
     const clonedPlayer = JSON.parse(JSON.stringify(player));
-    clonedPlayer.matrix = rotate(clonedPlayer.matrix);
+    clonedPlayer.shape = rotate(clonedPlayer.shape);
 
     const pos = clonedPlayer.pos.x;
     let offset = 1;
     while (checkCollision(clonedPlayer, board, { x: 0, y: 0 })) {
       clonedPlayer.pos.x += offset;
       offset = -(offset + (offset > 0 ? 1 : -1));
-      if (offset > clonedPlayer.matrix[0].length) {
-        clonedPlayer.matrix = rotate(clonedPlayer.matrix);
+      if (offset > clonedPlayer.shape[0].length) {
+        clonedPlayer.shape = rotate(clonedPlayer.shape); // Rotate back
         clonedPlayer.pos.x = pos;
         return;
       }
@@ -42,18 +42,17 @@ export const usePlayer = () => {
     }));
   };
 
-  // resetPlayer artık bir sonraki parçayı oyuna sokuyor ve yeni bir "sonraki" oluşturuyor
   const resetPlayer = useCallback(() => {
+    // Önceki "nextPieceId"yi kullanarak mevcut oyuncuyu ayarla
     setPlayer({
       pos: { x: BOARD_WIDTH / 2 - 2, y: 0 },
-      // Eğer oyun yeni başlıyorsa rastgele bir parça al, değilse sıradaki parçayı al
-      matrix: nextPiece === SHAPES[0].shape ? randomShape().shape : nextPiece,
+      shape: SHAPES[nextPieceId] ? SHAPES[nextPieceId].shape : randomShape().shape, // ID'den şekli al
       collided: false,
     });
-    // Bir sonraki parçayı daima rastgele yenile
-    setNextPiece(randomShape().shape);
-  }, [nextPiece]);
+    // Bir sonraki tur için YENİ bir rastgele ID oluştur
+    setNextPieceId(randomShape().shape[1][1]); // Şeklin ortasından harfi alarak ID'yi belirliyoruz
+  }, [nextPieceId]);
 
-  // Hook artık dışarıya 5 değer döndürüyor: player, nextPiece, ve 3 fonksiyon
-  return [player, nextPiece, updatePlayerPos, resetPlayer, playerRotate];
+  // Dışarıya artık 'nextPiece' objesini ID'ye göre oluşturup gönderiyoruz
+  return [player, SHAPES[nextPieceId], updatePlayerPos, resetPlayer, playerRotate];
 };

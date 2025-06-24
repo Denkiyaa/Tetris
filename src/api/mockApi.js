@@ -1,56 +1,24 @@
-// localStorage için bir anahtar belirliyoruz
-const HIGH_SCORES_KEY = 'tetrisHighScores';
+// Artık bu dosya sahte değil, gerçek API ile konuşuyor!
+const API_URL = 'https://api.denkiya.com.tr'; // Kendi API adresiniz
 
-// Başlangıçta localStorage'da veri var mı diye kontrol et, yoksa varsayılan listeyi kullan
-const getInitialScores = () => {
-  try {
-    const savedScores = localStorage.getItem(HIGH_SCORES_KEY);
-    if (savedScores) {
-      return JSON.parse(savedScores);
-    }
-  } catch (e) {
-    console.error("Skorlar okunurken hata oluştu:", e);
+export const fetchScores = async () => {
+  const response = await fetch(`${API_URL}/scores`);
+  if (!response.ok) {
+    throw new Error('Sunucudan skorlar alınamadı.');
   }
-  // Varsayılan skorlar
-  return [
-    { name: 'OnionKnight', score: 5000 }, { name: 'Patches', score: 4200 },
-    { name: 'Solaire', score: 3500 }, { name: 'Psyduck', score: 2800 },
-    { name: 'Düzadam', score: 1500 },
-  ];
+  return await response.json();
 };
 
-// Skorları getiren fonksiyon artık localStorage'dan okuyor
-export const fetchScores = () => {
-  console.log('API: Skorlar localStorage\'dan isteniyor...');
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const scores = getInitialScores();
-      console.log('API: Skorlar başarıyla gönderildi.');
-      resolve(scores);
-    }, 500); // Gecikmeyi biraz kısalttık
+export const postScore = async (name, score) => {
+  const response = await fetch(`${API_URL}/scores`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name, score }),
   });
-};
-
-// Yeni bir skor ekleyen fonksiyon artık localStorage'a yazıyor
-export const postScore = (name, score) => {
-  console.log(`API: Yeni skor eklenecek... İsim: ${name}, Skor: ${score}`);
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (!Number.isFinite(score)) {
-        return reject(new Error('Skor geçerli bir sayı değil.'));
-      }
-      // Mevcut skorları al
-      const highScores = getInitialScores();
-      const newScore = { name, score };
-      highScores.push(newScore);
-      highScores.sort((a, b) => b.score - a.score);
-      const updatedScores = highScores.slice(0, 10);
-      
-      // Yeni listeyi localStorage'a kaydet
-      localStorage.setItem(HIGH_SCORES_KEY, JSON.stringify(updatedScores));
-      
-      console.log('API: Yeni skor başarıyla localStorage\'a eklendi.');
-      resolve({ success: true, scores: updatedScores });
-    }, 200);
-  });
+  if (!response.ok) {
+    throw new Error('Skor kaydedilemedi.');
+  }
+  return await response.json();
 };
