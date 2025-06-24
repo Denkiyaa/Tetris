@@ -28,7 +28,9 @@ const Tetris = () => {
 
   useEffect(() => {
     if (rowsCleared > 0) {
-      const linePoints = [40, 100, 300, 1200];
+      // [BUG 2 DÜZELTMESİ] Puanlama sistemi isteğiniz doğrultusunda daha doğrusal hale getirildi.
+      // 1 satır: 10, 2 satır: 30, 3 satır: 50, 4 satır: 80 puan.
+      const linePoints = [10, 30, 50, 80]; 
       setScore(prev => prev + linePoints[rowsCleared - 1] * (level + 1));
       setRows(prev => prev + rowsCleared);
       setIsFlashing(true);
@@ -67,14 +69,26 @@ const Tetris = () => {
     if (!checkCollision(player, board, { x: 0, y: 1 })) {
       updatePlayerPos({ x: 0, y: 1, collided: false });
     } else {
+      // Parça yere çarptı, ama oyun sonu kontrolünü buradan kaldırıyoruz.
+      // Bu kontrol artık `player.collided` useEffect'ine taşındı.
+      updatePlayerPos({ x: 0, y: 0, collided: true });
+    }
+  };
+  
+  // [BUG 1 DÜZELTMESİ] Oyun sonu kontrolü ve yeni parça oluşturma mantığı burada birleştirildi.
+  useEffect(() => {
+    // Sadece bir parça yere çarptığında tetiklenir
+    if (player.collided) {
+      // Yere çarpan parçanın pozisyonu en tepedeyse, oyunu bitir.
       if (player.pos.y < 1) {
         setGameOver(true);
         setDropTime(null);
       }
-      updatePlayerPos({ x: 0, y: 0, collided: true });
+      // Oyun bitmediyse, yeni parçayı oluştur.
+      resetPlayer();
     }
-  };
-
+  }, [player.collided, resetPlayer]);
+  
   const dropPlayer = () => {
     if (gameOver) return;
     setDropTime(null);
@@ -98,7 +112,7 @@ const Tetris = () => {
     if (gameOver) return;
     playerRotate(board);
   };
-
+  
   const startGame = () => {
     setBoard(createBoard());
     setDropTime(1000);
@@ -114,12 +128,6 @@ const Tetris = () => {
     setGamePhase('playing');
     startGame();
   };
-
-  useEffect(() => {
-    if (player.collided) {
-      resetPlayer();
-    }
-  }, [player.collided, resetPlayer]);
   
   const keyUp = ({ keyCode }) => {
     if (!gameOver) {
@@ -146,9 +154,9 @@ const Tetris = () => {
   const move = ({ keyCode }) => {
     if (!gameOver) {
       const key = keyCode;
-      if (key === 37 || key === 65) { movePlayer(-1); }
-      else if (key === 39 || key === 68) { movePlayer(1); }
-      else if (key === 40 || key === 83) { dropPlayer(); }
+      if (key === 37 || key === 65) { movePlayer(-1); } 
+      else if (key === 39 || key === 68) { movePlayer(1); } 
+      else if (key === 40 || key === 83) { dropPlayer(); } 
       else if (key === 38 || key === 87) { rotatePlayer(); }
       else if (key === 32) { hardDrop(); }
     }
@@ -167,7 +175,7 @@ const Tetris = () => {
               <button className={styles.startButton} onClick={startGame}>
                 Yeniden Başlat
               </button>
-              <HighScores gameOver={gameOver} scores={scores} loading={loading} error={error} />
+              <HighScores gameOver={gameOver} />
             </aside>
           </div>
           <Controls 

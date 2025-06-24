@@ -13,9 +13,9 @@ const getInitialScores = () => {
   }
   // Varsayılan skorlar
   return [
-    { name: 'Gemini', score: 50000 }, { name: 'Player1', score: 42000 },
-    { name: 'ReactFan', score: 35000 }, { name: 'TetrisMstr', score: 28000 },
-    { name: 'Hook', score: 15000 },
+    { name: 'OnionKnight', score: 5000 }, { name: 'Patches', score: 4200 },
+    { name: 'Solaire', score: 3500 }, { name: 'Psyduck', score: 2800 },
+    { name: 'Düzadam', score: 1500 },
   ];
 };
 
