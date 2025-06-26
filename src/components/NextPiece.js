@@ -3,15 +3,12 @@ import Cell from './Cell';
 import styles from './NextPiece.module.css';
 
 const NextPiece = ({ piece }) => {
-  // Her zaman 4x4'lük bir alan oluşturuyoruz
+  // Gelen parçayı 4x4'lük bir alanda ortalamak için
   const grid = Array.from(Array(4), () => Array(4).fill(0));
-
-  // Gelen parçayı bu 4x4'lük alanın ortasına yerleştiriyoruz
-  if (piece) {
-    const yOffset = Math.floor((4 - piece.length) / 2);
-    const xOffset = Math.floor((4 - piece[0].length) / 2);
-
-    piece.forEach((row, y) => {
+  if (piece && piece.shape) {
+    const yOffset = Math.floor((4 - piece.shape.length) / 2);
+    const xOffset = Math.floor((4 - piece.shape[0].length) / 2);
+    piece.shape.forEach((row, y) => {
       row.forEach((value, x) => {
         if (value !== 0) {
           grid[y + yOffset][x + xOffset] = value;
@@ -31,5 +28,4 @@ const NextPiece = ({ piece }) => {
     </div>
   );
 };
-
 export default NextPiece;

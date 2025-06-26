@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchScores, postScore } from '../api/mockApi';
 
-// "export const" yerine sadece "const" olarak değiştirildi.
 const useHighScores = () => {
   const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Skorları getiren fonksiyon (artık 'refetchScores' olarak da kullanılacak)
   const getScores = useCallback(async () => {
     try {
       setLoading(true);
@@ -20,22 +20,23 @@ const useHighScores = () => {
     }
   }, []);
 
+  // Yeni skor ekleyen fonksiyon artık daha basit: Sadece skoru gönderiyor.
   const addScore = useCallback(async (name, score) => {
     try {
       setError(null);
       await postScore(name, score);
-      await getScores();
     } catch (err) {
       setError(err.message);
     }
-  }, [getScores]);
+  }, []);
 
+  // Bileşen ilk yüklendiğinde skorları otomatik olarak çek
   useEffect(() => {
     getScores();
   }, [getScores]);
 
-  return { scores, loading, error, addScore };
+  // Dışarıya artık 'getScores' fonksiyonunu da veriyoruz
+  return { scores, loading, error, addScore, refetchScores: getScores };
 };
 
-// Fonksiyonu "default" olarak export ediyoruz.
 export default useHighScores;

@@ -4,12 +4,12 @@ import { SHAPES, randomShape, BOARD_WIDTH, checkCollision } from '../gameHelpers
 export const usePlayer = () => {
   const [player, setPlayer] = useState({
     pos: { x: 0, y: 0 },
-    // Başlangıçta matrix'i 'null' yapıyoruz. Bu, "henüz parça yok" anlamına gelir.
-    matrix: null, 
+    matrix: null, // Başlangıçta matrix null olacak
     collided: false,
   });
   
-  const [nextPiece, setNextPiece] = useState(SHAPES[0].shape);
+  // Sonraki parçayı tutmak için yeni state eklendi
+  const [nextPiece, setNextPiece] = useState(null);
 
   const rotate = (matrix) => {
     const rotated = matrix.map((_, index) => matrix.map(col => col[index]));
@@ -17,9 +17,7 @@ export const usePlayer = () => {
   };
 
   const playerRotate = (board) => {
-    // Parça yoksa döndürme
     if (!player.matrix) return;
-    
     const clonedPlayer = JSON.parse(JSON.stringify(player));
     clonedPlayer.matrix = rotate(clonedPlayer.matrix);
 
@@ -29,7 +27,7 @@ export const usePlayer = () => {
       clonedPlayer.pos.x += offset;
       offset = -(offset + (offset > 0 ? 1 : -1));
       if (offset > clonedPlayer.matrix[0].length) {
-        clonedPlayer.matrix = rotate(clonedPlayer.matrix);
+        clonedPlayer.matrix = rotate(clonedPlayer.matrix); // Hata varsa geri döndür
         clonedPlayer.pos.x = pos;
         return;
       }
@@ -45,14 +43,16 @@ export const usePlayer = () => {
     }));
   };
 
+  // resetPlayer artık bir sonraki parçayı oyuna sokuyor ve yeni bir "sonraki" oluşturuyor
   const resetPlayer = useCallback(() => {
     setPlayer({
       pos: { x: BOARD_WIDTH / 2 - 2, y: 0 },
-      matrix: nextPiece === SHAPES[0].shape ? randomShape().shape : nextPiece,
+      matrix: nextPiece ? nextPiece.shape : randomShape().shape,
       collided: false,
     });
-    setNextPiece(randomShape().shape);
+    setNextPiece(randomShape());
   }, [nextPiece]);
 
+  // Hook artık dışarıya 5 değer döndürüyor: player, nextPiece, ve 3 fonksiyon
   return [player, nextPiece, updatePlayerPos, resetPlayer, playerRotate];
 };
