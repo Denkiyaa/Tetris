@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createBoard, checkCollision } from '../gameHelpers';
 import { usePlayer } from '../hooks/usePlayer';
 import { useBoard } from '../hooks/useBoard';
+// ÖNEMLİ: useHighScores hook'unu import ettiğinizden emin olun
 import useHighScores from '../hooks/useHighScores';
 import Board from './Board';
 import Stats from './Stats';
@@ -9,7 +10,7 @@ import NicknameForm from './NicknameForm';
 import HighScores from './HighScores';
 import Controls from './Controls';
 import HelpModal from './HelpModal';
-import NextPiece from './NextPiece';
+import NextPiece from './NextPiece'; // 'nextPiece' kullanacağımız için bu import gerekli
 import styles from './Tetris.module.css';
 
 const Tetris = () => {
@@ -18,6 +19,7 @@ const Tetris = () => {
   const [gamePhase, setGamePhase] = useState('welcome');
   const [nickname, setNickname] = useState('');
 
+  // Sizin kodunuzla uyumlu olması için usePlayer'dan 5 değer alıyoruz
   const [player, nextPiece, updatePlayerPos, resetPlayer, playerRotate] = usePlayer();
   const [board, setBoard, rowsCleared] = useBoard(player, resetPlayer);
   
@@ -26,12 +28,13 @@ const Tetris = () => {
   const [level, setLevel] = useState(0);
   
   const [isFlashing, setIsFlashing] = useState(false);
+  // useHighScores'tan gelen verileri burada karşılıyoruz
   const { scores, loading, error, addScore, refetchScores } = useHighScores();
   
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const actionLock = useRef(false);
 
-  // [KİLİT GECİKMESİ] Zamanlayıcıyı tutmak için yeni bir ref
+  // Kilit gecikmesi için olan kodunuz
   const lockDelayTimer = useRef(null);
 
   useEffect(() => {
@@ -41,7 +44,7 @@ const Tetris = () => {
       setRows(prev => prev + rowsCleared);
       setIsFlashing(true);
     }
-  }, [rowsCleared]);
+  }, [rowsCleared]); // Düzeltme: level bağımlılığı kaldırıldı
   
   useEffect(() => {
     const newLevel = Math.floor(rows / 10);
@@ -52,16 +55,19 @@ const Tetris = () => {
 
   useEffect(() => { if (isFlashing) { const timeout = setTimeout(() => setIsFlashing(false), 200); return () => clearTimeout(timeout); } }, [isFlashing]);
   
+  // Skor kaydetme ve listeyi yenileme mantığı
   useEffect(() => {
     const saveAndRefresh = async () => {
       if (score > 0) { await addScore(nickname, score); }
-      refetchScores();
+      else { refetchScores(); } // Skoru 0 ise bile listeyi yenile
     };
     if (gameOver) { saveAndRefresh(); }
-  }, [gameOver]);
+  }, [gameOver]); // Sadece oyun bittiğinde çalışır
 
+  // Oyun sonu ve yeni parça oluşturma mantığı
   useEffect(() => {
     if (player.collided) {
+      clearLockDelay(); // Parça kilitlendiğinde zamanlayıcıyı temizle
       if (player.pos.y < 1) {
         setGameOver(true);
         setDropTime(null);
@@ -69,9 +75,8 @@ const Tetris = () => {
       resetPlayer();
       setTimeout(() => { actionLock.current = false; }, 50); 
     }
-  }, [player.collided, resetPlayer, score, nickname, addScore, refetchScores]);
+  }, [player.collided, resetPlayer]);
   
-  // [KİLİT GECİKMESİ] Zamanlayıcıyı temizleyen fonksiyon
   const clearLockDelay = () => {
     if (lockDelayTimer.current) {
       clearTimeout(lockDelayTimer.current);
@@ -83,22 +88,21 @@ const Tetris = () => {
     if (gameOver || actionLock.current) return;
     if (!checkCollision(player, board, { x: dir, y: 0 })) {
       updatePlayerPos({ x: dir, y: 0, collided: false });
-      // [KİLİT GECİKMESİ] Parça hareket edince zamanlayıcıyı sıfırla
       clearLockDelay();
     }
   };
 
   const drop = () => {
-    // [KİLİT GECİKMESİ] drop fonksiyonunun mantığı tamamen güncellendi
+    clearLockDelay(); // Otomatik düşüş olduğunda kilit gecikmesini iptal et
     if (!checkCollision(player, board, { x: 0, y: 1 })) {
       updatePlayerPos({ x: 0, y: 1, collided: false });
     } else {
-      // Parça bir yere değdi, hemen kilitleme, zamanlayıcıyı başlat
+      // Parça değdi, kilitleme zamanlayıcısını başlat
       if (!lockDelayTimer.current) {
         lockDelayTimer.current = setTimeout(() => {
           updatePlayerPos({ x: 0, y: 0, collided: true });
           lockDelayTimer.current = null;
-        }, 500); // 500ms (yarım saniye) bekle
+        }, 500);
       }
     }
   };
@@ -108,7 +112,7 @@ const Tetris = () => {
   const hardDrop = () => {
     if (gameOver || actionLock.current) return;
     actionLock.current = true;
-    clearLockDelay(); // [KİLİT GECİKMESİ] Hard drop yaparken bekleyen zamanlayıcıyı iptal et
+    clearLockDelay();
     let tempPlayer = JSON.parse(JSON.stringify(player));
     while (!checkCollision(tempPlayer, board, { x: 0, y: 1 })) { tempPlayer.pos.y += 1; }
     updatePlayerPos({ x: 0, y: tempPlayer.pos.y - player.pos.y, collided: true });
@@ -117,11 +121,10 @@ const Tetris = () => {
   const rotatePlayer = () => {
     if (gameOver || actionLock.current) return;
     playerRotate(board);
-    // [KİLİT GECİKMESİ] Parça dönünce zamanlayıcıyı sıfırla
     clearLockDelay();
   };
   
-  const startGame = () => { setBoard(createBoard()); setDropTime(1000); resetPlayer(); setScore(0); setRows(0); setLevel(0); setGameOver(false); };
+  const startGame = () => { setBoard(createBoard()); setDropTime(1000); resetPlayer(); setScore(0); setRows(0); setLevel(0); setGameOver(false); refetchScores(); };
   const handleNicknameSubmit = (name) => { setNickname(name); setGamePhase('playing'); startGame(); };
   
   const keyUp = ({ keyCode }) => { if (!gameOver) { if ((keyCode === 40 || keyCode === 83)) { setDropTime(1000 / (level + 1) + 200); } } };
@@ -150,7 +153,8 @@ const Tetris = () => {
               <button className={styles.startButton} onClick={startGame}>
                 Yeniden Başlat
               </button>
-              <HighScores gameOver={gameOver} />
+              {/* [ANA DÜZELTME] HighScores bileşenine doğru proplar (veriler) aktarılıyor */}
+              <HighScores scores={scores} loading={loading} error={error} />
             </aside>
           </div>
           <Controls 
