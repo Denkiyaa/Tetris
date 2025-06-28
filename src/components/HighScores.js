@@ -1,10 +1,9 @@
 import React from 'react';
 import styles from './HighScores.module.css';
 
-// Bileşen artık state tutmuyor, sadece props (özellikler) alıyor: scores, loading, error
+// Bileşen artık state tutmuyor, sadece props (scores, loading, error) alıyor
 const HighScores = ({ scores, loading, error }) => {
   
-  // Gelen duruma göre ne gösterileceğini belirleyen yardımcı bir fonksiyon
   const renderContent = () => {
     // Veri hala yükleniyorsa "Yükleniyor..." mesajı göster
     if (loading) {
