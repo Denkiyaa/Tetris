@@ -1,58 +1,34 @@
-import { useState, useEffect } from 'react';
-import { createBoard } from '../gameHelpers';
+import React from 'react';
+import Cell from './Cell';
+import styles from './Board.module.css';
 
-export const useBoard = (player, resetPlayer) => {
-  const [board, setBoard] = useState(createBoard());
-  const [rowsCleared, setRowsCleared] = useState(0);
+const Board = ({ board, player }) => {
+  const displayBoard = board.map(row => [...row]);
 
-  useEffect(() => {
-    setRowsCleared(0);
-
-    const sweepRows = (newBoard) =>
-      newBoard.reduce((ack, row) => {
-        if (row.findIndex((cell) => cell[0] === 0) === -1) {
-          setRowsCleared(prev => prev + 1);
-          ack.unshift(new Array(newBoard[0].length).fill([0, 'clear']));
-          return ack;
-        }
-        ack.push(row);
-        return ack;
-      }, []);
-
-    const updateBoard = (prevBoard) => {
-      if (!player.matrix) {
-        return prevBoard;
-      }
-
-      const newBoard = JSON.parse(JSON.stringify(prevBoard));
-
-      newBoard.forEach(row => 
-        row.forEach(cell => {
-          if (cell[1] === 'clear') {
-            cell[0] = 0;
-          }
-        })
-      );
-
-      player.matrix.forEach((row, y) => {
-        row.forEach((value, x) => {
-          if (value !== 0) {
-            if (newBoard[y + player.pos.y] && newBoard[y + player.pos.y][x + player.pos.x]) {
-                newBoard[y + player.pos.y][x + player.pos.x] = [value, `${player.collided ? 'merged' : 'clear'}`];
+  // [GÜVENLİK KONTROLÜ] Sadece player ve matrix varsa çizim yap
+  if (player && player.matrix) {
+    player.matrix.forEach((row, y) => {
+      row.forEach((value, x) => {
+        if (value !== 0) {
+          const boardY = y + player.pos.y;
+          const boardX = x + player.pos.x;
+          if (boardY >= 0 && boardY < displayBoard.length) {
+            if (displayBoard[boardY][boardX] && displayBoard[boardY][boardX][1] === 'clear') {
+              displayBoard[boardY][boardX] = [value, 'clear'];
             }
           }
-        });
+        }
       });
+    });
+  }
 
-      if (player.collided) {
-        resetPlayer();
-        return sweepRows(newBoard);
-      }
-      return newBoard;
-    };
-
-    setBoard(prev => updateBoard(prev));
-  }, [player, resetPlayer]);
-
-  return [board, setBoard, rowsCleared];
+  return (
+    <div className={styles.board}>
+      {displayBoard.map((row, y) =>
+        row.map((cell, x) => <Cell key={`${y}-${x}`} type={cell[0]} />)
+      )}
+    </div>
+  );
 };
+
+export default Board;

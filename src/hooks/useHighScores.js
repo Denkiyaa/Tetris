@@ -1,35 +1,40 @@
-import React from 'react';
-import styles from './HighScores.module.css';
+import { useState, useEffect, useCallback } from 'react';
+import { fetchScores, postScore } from '../api/mockApi';
 
-const HighScores = ({ scores, loading, error }) => {
-  const renderContent = () => {
-    if (loading) {
-      return <p className={styles.message}>Yükleniyor...</p>;
-    }
-    if (error) {
-      return <p className={`${styles.message} ${styles.error}`}>Hata: {error}</p>;
-    }
-    if (scores && scores.length > 0) {
-      return (
-        <ol className={styles.scoreList}>
-          {scores.map((score, index) => (
-            <li key={index}>
-              <span>{score.name}</span>
-              <span>{score.score}</span>
-            </li>
-          ))}
-        </ol>
-      );
-    }
-    return <p className={styles.message}>Henüz skor yok.</p>;
-  };
+const useHighScores = () => {
+  const [scores, setScores] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  return (
-    <div className={styles.highScores}>
-      <h2>YÜKSEK SKORLAR</h2>
-      {renderContent()}
-    </div>
-  );
+  const getScores = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const fetchedScores = await fetchScores();
+      setScores(fetchedScores);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const addScore = useCallback(async (name, score) => {
+    try {
+      setError(null);
+      await postScore(name, score);
+      // Skor ekledikten sonra listeyi yenile
+      await getScores();
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [getScores]);
+
+  useEffect(() => {
+    getScores();
+  }, [getScores]);
+
+  return { scores, loading, error, addScore, refetchScores: getScores };
 };
 
-export default HighScores;
+export default useHighScores;
