@@ -1,44 +1,35 @@
-import { useState, useEffect, useCallback } from 'react';
-import { fetchScores, postScore } from '../api/mockApi';
+import React from 'react';
+import styles from './HighScores.module.css';
 
-const useHighScores = () => {
-  const [scores, setScores] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const getScores = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const fetchedScores = await fetchScores();
-      setScores(fetchedScores);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+const HighScores = ({ scores, loading, error }) => {
+  const renderContent = () => {
+    if (loading) {
+      return <p className={styles.message}>Yükleniyor...</p>;
     }
-  }, []);
-
-  // [ANA DÜZELTME 2] addScore fonksiyonu, skor ekledikten sonra listeyi yenileyecek.
-  const addScore = useCallback(async (name, score) => {
-    try {
-      setError(null);
-      // Önce yeni skoru veritabanına gönder
-      await postScore(name, score);
-      // Ardından güncel listeyi tekrar çek
-      await getScores();
-    } catch (err) {
-      setError(err.message);
+    if (error) {
+      return <p className={`${styles.message} ${styles.error}`}>Hata: {error}</p>;
     }
-  }, [getScores]); // getScores fonksiyonuna bağımlı hale getirildi
+    if (scores && scores.length > 0) {
+      return (
+        <ol className={styles.scoreList}>
+          {scores.map((score, index) => (
+            <li key={index}>
+              <span>{score.name}</span>
+              <span>{score.score}</span>
+            </li>
+          ))}
+        </ol>
+      );
+    }
+    return <p className={styles.message}>Henüz skor yok.</p>;
+  };
 
-  // Bileşen ilk yüklendiğinde skorları otomatik olarak çek
-  useEffect(() => {
-    getScores();
-  }, [getScores]);
-
-  // Artık sadece 4 değer döndürüyoruz, refetch'e gerek kalmadı
-  return { scores, loading, error, addScore };
+  return (
+    <div className={styles.highScores}>
+      <h2>YÜKSEK SKORLAR</h2>
+      {renderContent()}
+    </div>
+  );
 };
 
-export default useHighScores;
+export default HighScores;
