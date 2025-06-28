@@ -18,7 +18,6 @@ const Tetris = () => {
   const [gamePhase, setGamePhase] = useState('welcome');
   const [nickname, setNickname] = useState('');
 
-  // [UYUMLULUK GÜNCELLEMESİ] Artık usePlayer'dan 5 değer alıyoruz
   const [player, nextPiece, updatePlayerPos, resetPlayer, playerRotate] = usePlayer();
   const [board, setBoard, rowsCleared] = useBoard(player, resetPlayer);
   
@@ -27,15 +26,14 @@ const Tetris = () => {
   const [level, setLevel] = useState(0);
   
   const [isFlashing, setIsFlashing] = useState(false);
-  const { scores, loading, error, addScore, refetchScores } = useHighScores();
+  const { scores, loading, error, addScore } = useHighScores();
   
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const actionLock = useRef(false); // Tuş tekrarını engellemek için kilit
+  const actionLock = useRef(false);
 
-  // [BUG DÜZELTMESİ] Skor döngüsü, `level` bağımlılığı kaldırılarak düzeltildi.
   useEffect(() => {
     if (rowsCleared > 0) {
-      const linePoints = [10, 30, 60, 100]; // Daha doğrusal ve dengeli puanlama
+      const linePoints = [10, 30, 60, 100];
       setScore(prev => prev + linePoints[rowsCleared - 1] * (level + 1));
       setRows(prev => prev + rowsCleared);
       setIsFlashing(true);
@@ -50,48 +48,38 @@ const Tetris = () => {
     }
   }, [rows, level]);
 
-  useEffect(() => { if (isFlashing) { const timeout = setTimeout(() => setIsFlashing(false), 200); return () => clearTimeout(timeout); } }, [isFlashing]);
-  
-  // Skor kaydetme ve listeyi yenileme mantığı
   useEffect(() => {
-    const saveAndRefresh = async () => {
-      if (score > 0) {
-        await addScore(nickname, score);
-      }
-      refetchScores();
-    };
-    if (gameOver) {
-      saveAndRefresh();
+    if (isFlashing) {
+      const timeout = setTimeout(() => setIsFlashing(false), 200);
+      return () => clearTimeout(timeout);
     }
-  }, [gameOver]);
+  }, [isFlashing]);
 
-  // [BUG DÜZELTMESİ] Oyun sonu ve yeni parça oluşturma mantığı birleştirildi.
+  // [ANA DÜZELTME 1] Oyun sonu ve skor kaydetme mantığı tek bir yerde birleştirildi.
   useEffect(() => {
     if (player.collided) {
+      // Önce oyunun bitip bitmediğini kontrol et
       if (player.pos.y < 1) {
         setGameOver(true);
         setDropTime(null);
+        // OYUN BİTTİĞİ ANDA, en güncel skor ile kaydetme işlemini yap.
+        // Sadece skor 0'dan büyükse kaydet.
+        if (score > 0) {
+          addScore(nickname, score);
+        }
       }
-      // Kilit açılmadan hemen önce yeni parçayı oluştur
+      // Her çarpışmadan sonra oyuncuyu resetle
       resetPlayer();
-      // Yeni parça geldikten kısa bir süre sonra tuş kilidini aç
-      setTimeout(() => { actionLock.current = false; }, 50); 
+      // Kısa bir süre sonra tuş kilidini aç
+      setTimeout(() => { actionLock.current = false; }, 50);
     }
-  }, [player.collided, resetPlayer]);
+    // Bu useEffect'in doğru çalışması için bağımlılıklara score ve nickname eklendi.
+  }, [player.collided, resetPlayer, score, nickname, addScore, gameOver]);
   
   const movePlayer = (dir) => { if (gameOver || actionLock.current) return; if (!checkCollision(player, board, { x: dir, y: 0 })) { updatePlayerPos({ x: dir, y: 0, collided: false }); } };
   const drop = () => { if (!checkCollision(player, board, { x: 0, y: 1 })) { updatePlayerPos({ x: 0, y: 1, collided: false }); } else { updatePlayerPos({ x: 0, y: 0, collided: true }); } };
   const dropPlayer = () => { if (gameOver || actionLock.current) return; setDropTime(null); drop(); };
-  
-  // [BUG DÜZELTMESİ] Kilit mekanizması ile hardDrop güncellendi
-  const hardDrop = () => {
-    if (gameOver || actionLock.current) return;
-    actionLock.current = true; // Hareketi KİLİTLE
-    let tempPlayer = JSON.parse(JSON.stringify(player));
-    while (!checkCollision(tempPlayer, board, { x: 0, y: 1 })) { tempPlayer.pos.y += 1; }
-    updatePlayerPos({ x: 0, y: tempPlayer.pos.y - player.pos.y, collided: true });
-  };
-  
+  const hardDrop = () => { if (gameOver || actionLock.current) return; actionLock.current = true; let tempPlayer = JSON.parse(JSON.stringify(player)); while (!checkCollision(tempPlayer, board, { x: 0, y: 1 })) { tempPlayer.pos.y += 1; } updatePlayerPos({ x: 0, y: tempPlayer.pos.y - player.pos.y, collided: true }); };
   const rotatePlayer = () => { if (gameOver || actionLock.current) return; playerRotate(board); };
   
   const startGame = () => { setBoard(createBoard()); setDropTime(1000); resetPlayer(); setScore(0); setRows(0); setLevel(0); setGameOver(false); };
@@ -102,15 +90,14 @@ const Tetris = () => {
   useInterval(() => { if (!gameOver) drop(); }, dropTime);
   const move = ({ keyCode }) => { if (!gameOver) { const key = keyCode; if (key === 37 || key === 65) { movePlayer(-1); } else if (key === 39 || key === 68) { movePlayer(1); } else if (key === 40 || key === 83) { dropPlayer(); } else if (key === 38 || key === 87) { rotatePlayer(); } else if (key === 32) { hardDrop(); } } };
 
-  // Swipe Kontrolleri
   const touchStartPos = useRef({ x: 0, y: 0 }); const isSwiping = useRef(false);
   const handleTouchStart = (e) => { e.preventDefault(); touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; isSwiping.current = true; };
   const handleTouchEnd = (e) => { if (!isSwiping.current || actionLock.current) return; isSwiping.current = false; const deltaX = e.changedTouches[0].clientX - touchStartPos.current.x; const deltaY = e.changedTouches[0].clientY - touchStartPos.current.y; const threshold = 30; if (Math.abs(deltaX) > Math.abs(deltaY)) { if (deltaX > threshold) { movePlayer(1); } else if (deltaX < -threshold) { movePlayer(-1); } } else { if (deltaY > threshold) { dropPlayer(); } else if (deltaY < -threshold) { rotatePlayer(); } } };
 
   return (
     <div className={styles.tetrisWrapper} role="button" tabIndex="0" onKeyDown={e => move(e)} onKeyUp={keyUp} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onTouchMove={(e) => e.preventDefault()} >
-      <button className={styles.helpButton} onClick={() => setIsHelpOpen(true)}>?</button>
       {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} />}
+      <button className={styles.helpButton} onClick={() => setIsHelpOpen(true)}>?</button>
       
       {gamePhase === 'welcome' ? (
         <NicknameForm onStart={handleNicknameSubmit} />
@@ -124,7 +111,8 @@ const Tetris = () => {
               <button className={styles.startButton} onClick={startGame}>
                 Yeniden Başlat
               </button>
-              <HighScores gameOver={gameOver} scores={scores} loading={loading} error={error} />
+              {/* HighScores'un prop'ları güncellendi */}
+              <HighScores scores={scores} loading={loading} error={error} />
             </aside>
           </div>
           <Controls 

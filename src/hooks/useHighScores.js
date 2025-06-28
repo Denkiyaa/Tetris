@@ -6,7 +6,6 @@ const useHighScores = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Skorları getiren fonksiyon (artık 'refetchScores' olarak da kullanılacak)
   const getScores = useCallback(async () => {
     try {
       setLoading(true);
@@ -20,23 +19,26 @@ const useHighScores = () => {
     }
   }, []);
 
-  // Yeni skor ekleyen fonksiyon artık daha basit: Sadece skoru gönderiyor.
+  // [ANA DÜZELTME 2] addScore fonksiyonu, skor ekledikten sonra listeyi yenileyecek.
   const addScore = useCallback(async (name, score) => {
     try {
       setError(null);
+      // Önce yeni skoru veritabanına gönder
       await postScore(name, score);
+      // Ardından güncel listeyi tekrar çek
+      await getScores();
     } catch (err) {
       setError(err.message);
     }
-  }, []);
+  }, [getScores]); // getScores fonksiyonuna bağımlı hale getirildi
 
   // Bileşen ilk yüklendiğinde skorları otomatik olarak çek
   useEffect(() => {
     getScores();
   }, [getScores]);
 
-  // Dışarıya artık 'getScores' fonksiyonunu da veriyoruz
-  return { scores, loading, error, addScore, refetchScores: getScores };
+  // Artık sadece 4 değer döndürüyoruz, refetch'e gerek kalmadı
+  return { scores, loading, error, addScore };
 };
 
 export default useHighScores;
