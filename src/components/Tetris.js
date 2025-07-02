@@ -130,7 +130,7 @@ const Tetris = () => {
       }, []);
 
       if (clearedRowsCount > 0) {
-        const linePoints = [40, 100, 300, 1200];
+        const linePoints = [10, 30, 60, 100];
         setScore(prev => prev + linePoints[clearedRowsCount - 1] * (level + 1));
         setRows(prev => prev + clearedRowsCount);
       }
