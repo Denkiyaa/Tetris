@@ -2,8 +2,10 @@ export const BOARD_WIDTH = 10;
 export const BOARD_HEIGHT = 20;
 
 export const createBoard = () =>
-  Array.from(Array(BOARD_HEIGHT), () => Array(BOARD_WIDTH).fill([0, 'clear']));
-
+  Array.from({ length: BOARD_HEIGHT }, () =>
+    Array.from({ length: BOARD_WIDTH }, () => [0, 'clear'])
+  );
+  
 export const SHAPES = {
   0: { shape: [[0]], color: '0, 0, 0' },
   F: { shape: [[0]], color: '230, 230, 230' }, // [YENİ EKLENTİ] Parlama için parlak beyaz renk
