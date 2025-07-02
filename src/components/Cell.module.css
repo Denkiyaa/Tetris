@@ -1,5 +1,10 @@
 .cell {
-    width: auto;
-    background: rgba(30, 30, 30, 0.8); /* Arka plan rengi */
-    border: 1px solid #333;
-  }
+  width: auto;
+  background: rgba(30, 30, 30, 0.8);
+  /* Arka plan rengi */
+  border: 1px solid #001;
+    /* Dikey çizgi istediğiniz gibi kalabilir */
+  border-right: 1px solid #300;
+  /* [YENİ] Yatay çizgiyi aşırı silik hale getirdik */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}

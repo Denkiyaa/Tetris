@@ -1,46 +1,64 @@
 import { useState, useEffect } from 'react';
 import { createBoard } from '../gameHelpers';
 
-export const useBoard = (player, resetPlayer) => {
+// Hook artık 3. parametre olarak bir "callback" fonksiyonu alıyor: onRowsCleared
+export const useBoard = (player, resetPlayer, onRowsCleared) => {
   const [board, setBoard] = useState(createBoard());
-  const [rowsCleared, setRowsCleared] = useState(0);
 
   useEffect(() => {
-    // Bu efekt sadece ve sadece bir parça yere çarptığında çalışır.
-    if (!player.collided) {
+    if (!player) {
       return;
     }
 
-    setRowsCleared(0);
-    const sweepRows = (newBoard) =>
-      newBoard.reduce((ack, row) => {
-        if (row.findIndex((cell) => cell[0] === 0) === -1) {
-          ack.unshift(new Array(newBoard[0].length).fill([0, 'clear']));
-          setRowsCleared(prev => prev + 1);
-          return ack;
-        }
-        ack.push(row);
-        return ack;
-      }, []);
+    const updateBoard = (prevBoard) => {
+      // Önceki izleri temizle
+      const newBoard = prevBoard.map(row =>
+        row.map(cell => (cell[1] === 'clear' ? [0, 'clear'] : cell))
+      );
 
-    // Board'u güncelle: Yere çarpan parçayı board'a işle.
-    setBoard(prev => {
-      const newBoard = JSON.parse(JSON.stringify(prev));
-
+      // Oyuncuyu yeni pozisyonuna çiz
       player.matrix.forEach((row, y) => {
         row.forEach((value, x) => {
           if (value !== 0) {
-            newBoard[y + player.pos.y][x + player.pos.x] = [
-              value,
-              'merged', // Hücreyi 'birleşti' olarak işaretle
-            ];
+            if (newBoard[y + player.pos.y]?.[x + player.pos.x]) {
+              newBoard[y + player.pos.y][x + player.pos.x] = [
+                value,
+                `${player.collided ? 'merged' : 'clear'}`,
+              ];
+            }
           }
         });
       });
 
-      return sweepRows(newBoard);
-    });
-  }, [player.collided]); // Sadece 'collided' durumu değiştiğinde tetiklenir.
+      // Eğer parça çarptıysa, satırları temizle
+      if (player.collided) {
+        let clearedRowsCount = 0;
+        const sweptBoard = newBoard.reduce((ack, row) => {
+          if (row.findIndex(cell => cell[0] === 0) === -1) {
+            clearedRowsCount += 1; // Sadece say, state'i değiştirme
+            ack.unshift(new Array(newBoard[0].length).fill([0, 'clear']));
+            return ack;
+          }
+          ack.push(row);
+          return ack;
+        }, []);
 
-  return [board, setBoard, rowsCleared];
+        // Eğer en az bir satır temizlendiyse, Tetris.js'e haber ver
+        if (clearedRowsCount > 0) {
+          onRowsCleared(clearedRowsCount);
+        }
+
+        resetPlayer();
+        return sweptBoard;
+      }
+      
+      return newBoard;
+    };
+
+    setBoard(prev => updateBoard(prev));
+    
+  }, [player, resetPlayer, onRowsCleared]);
+
+  // Artık dışarıya rowsCleared döndürmüyor
+  return [board, setBoard];
 };

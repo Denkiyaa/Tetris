@@ -2,24 +2,20 @@ import { useState, useCallback } from 'react';
 import { SHAPES, randomShape, BOARD_WIDTH } from '../gameHelpers';
 
 export const usePlayer = () => {
-  const [player, setPlayer] = useState({
-    pos: { x: 0, y: 0 },
-    matrix: null,
-    collided: false,
-  });
-  
+  const [player, setPlayer] = useState(null);
   const [nextPiece, setNextPiece] = useState(null);
 
   const rotate = (matrix) => {
+    // Matrisi döndür (transpose + reverse)
     const rotated = matrix.map((_, index) => matrix.map(col => col[index]));
     return rotated.map(row => row.reverse());
   };
 
-  const playerRotate = (board, dir) => {
-    if (!player.matrix) return;
+  const playerRotate = (board) => {
+    if (!player) return;
     const clonedPlayer = JSON.parse(JSON.stringify(player));
-    clonedPlayer.matrix = rotate(clonedPlayer.matrix, dir);
-    // ... (Wall kick logic - basit tutmak için şimdilik kaldırıldı, eklenebilir)
+    clonedPlayer.matrix = rotate(clonedPlayer.matrix);
+    // Wall-kick (duvardan sekme) mantığı buraya eklenebilir, şimdilik basit tutuyoruz.
     setPlayer(clonedPlayer);
   };
 
@@ -32,12 +28,13 @@ export const usePlayer = () => {
   };
 
   const resetPlayer = useCallback(() => {
+    const newPiece = nextPiece || randomShape();
+    setNextPiece(randomShape());
     setPlayer({
       pos: { x: BOARD_WIDTH / 2 - 1, y: 0 },
-      matrix: nextPiece ? nextPiece.shape : randomShape().shape,
+      matrix: newPiece.shape,
       collided: false,
     });
-    setNextPiece(randomShape());
   }, [nextPiece]);
 
   return [player, nextPiece, updatePlayerPos, resetPlayer, playerRotate];
