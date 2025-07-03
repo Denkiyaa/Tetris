@@ -30,7 +30,7 @@ export const postScore = async (name, score, durationInSeconds) => {
     score,
     timestamp,
     signature,
-    duration: durationInSeconds, 
+    duration: durationInSeconds,
   };
 
   const response = await fetch(`${API_URL}/scores`, {
