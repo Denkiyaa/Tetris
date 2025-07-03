@@ -122,9 +122,11 @@ const gameReducer = (state, action) => {
 
         // Temizlenecek satır yoksa, sadece parçayı kilitle.
         if (player.pos.y < 1) {
-          return { ...state, board: newBoard, gameOver: true, dropTime: null };
+          return { ...state, board: newBoard, gameOver: true, dropTime: null, player: null };
         }
-        return { ...state, board: newBoard, player: null };
+        const lockedState = { ...state, board: newBoard, player: null };
+
+        return gameReducer(lockedState, { type: 'SPAWN_NEW_PIECE' });
       }
 
       // Düşmeye devam et
@@ -207,9 +209,9 @@ const gameReducer = (state, action) => {
       const playerCopy = JSON.parse(JSON.stringify(player));
       playerCopy.pos.y += y;
 
-      // Önce düşür, sonra yeni parça getirmesi için action zinciri başlat
-      const droppedState = gameReducer({ ...state, player: playerCopy }, { type: 'DROP' });
-      return gameReducer(droppedState, { type: 'SPAWN_NEW_PIECE' });
+      // Parçayı en dibe indirilmiş haliyle sadece DROP action'ına teslim et.
+      // Geri kalanını (kilitleme, yeni parça getirme vb.) DROP case'i halledecek.
+      return gameReducer({ ...state, player: playerCopy }, { type: 'DROP' });
     }
 
     default:
@@ -252,14 +254,6 @@ const Tetris = () => {
     }, gameState.dropTime);
     return () => clearInterval(interval);
   }, [gameOver, gameState.dropTime]);
-
-  useEffect(() => {
-    // Eğer oyuncu yoksa (yani bir önceki parça kilitlendiyse)
-    // ve oyun bitmediyse, yeni bir parça getirmesi için action gönder.
-    if (!player && !gameOver) {
-      dispatch({ type: 'SPAWN_NEW_PIECE' });
-    }
-  }, [player, gameOver, dispatch]);
 
   useEffect(() => {
     // Tahtada 'flash' hücreleri var mı diye bak
@@ -329,7 +323,7 @@ const Tetris = () => {
         <>
           <div className={styles.tetris}>
             <AnimatedMascot status={mascotStatus} />
-            <Board board={board} player={player} isFlashing ={isFlashing } />
+            <Board board={board} player={player} isFlashing={isFlashing} />
             <aside>
               {nextPiece && <NextPiece piece={nextPiece} />}
               <Stats score={score} rows={rows} level={level} gameOver={gameOver} />
