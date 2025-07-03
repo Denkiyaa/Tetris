@@ -1,5 +1,3 @@
-// Tetris.js (TAMAMI)
-
 import React, { useState, useEffect, useReducer, useCallback } from 'react';
 import { createBoard, checkCollision, BOARD_WIDTH, BOARD_HEIGHT, randomShape } from '../gameHelpers';
 import useHighScores from '../hooks/useHighScores';
@@ -136,13 +134,15 @@ const gameReducer = (state, action) => {
       };
     }
 
+
+
     case 'SPAWN_NEW_PIECE': {
       const { board: currentBoard, nextPiece } = state;
 
       // Satırları temizle
       let clearedRowsCount = 0;
       const sweptBoard = currentBoard.reduce((ack, row) => {
-        if (row.every(cell => cell[1] === 'merged')) {
+        if (row.findIndex(cell => cell[0] === 0) === -1) {
           clearedRowsCount++;
           ack.unshift(new Array(BOARD_WIDTH).fill([0, 'clear']));
           return ack;
@@ -329,7 +329,7 @@ const Tetris = () => {
         <>
           <div className={styles.tetris}>
             <AnimatedMascot status={mascotStatus} />
-            <Board board={board} player={player} />
+            <Board board={board} player={player} isFlashing ={isFlashing } />
             <aside>
               {nextPiece && <NextPiece piece={nextPiece} />}
               <Stats score={score} rows={rows} level={level} gameOver={gameOver} />
