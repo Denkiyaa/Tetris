@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useReducer, useCallback } from 'react';
-import { createBoard, checkCollision, BOARD_WIDTH, BOARD_HEIGHT, randomShape } from '../gameHelpers';
+import { createBoard, checkCollision, BOARD_WIDTH, BOARD_HEIGHT, INTERNAL_BOARD_HEIGHT, randomShape } from '../gameHelpers';
 import useHighScores from '../hooks/useHighScores';
 import Board from './Board';
 import Stats from './Stats';
@@ -12,7 +12,8 @@ import styles from './Tetris.module.css';
 import AnimatedMascot from './AnimatedMascot';
 
 
-// --- 1. Oyunun Başlangıç Durumu ---
+
+// --- ÖNCE: `initialState` objesini burada tanımlayın ---
 const initialState = {
   board: createBoard(),
   player: null,
@@ -25,9 +26,6 @@ const initialState = {
   lockDelayTimer: null
 };
 
-// --- 2. Oyunun Tüm Mantığını Yöneten Reducer Fonksiyonu ---
-// --- YENİ VE DOĞRU REDUCER ---
-
 const gameReducer = (state, action) => {
   const { player, board, gameOver } = state;
 
@@ -39,7 +37,10 @@ const gameReducer = (state, action) => {
         ...initialState,
         board: createBoard(),
         player: {
-          pos: { x: BOARD_WIDTH / 2 - 1, y: 0 },
+          pos: {
+            x: BOARD_WIDTH / 2 - 1,
+            y: INTERNAL_BOARD_HEIGHT - BOARD_HEIGHT
+          },
           matrix: firstPiece.shape,
           collided: false,
         },
@@ -83,17 +84,21 @@ const gameReducer = (state, action) => {
       if (gameOver || !player) return state;
 
       if (checkCollision(player, board, { x: 0, y: 1 })) {
-        // Yere değdi. Parçayı tahtaya işle.
+        // 1. Parçayı tahtaya işle
         const newBoard = JSON.parse(JSON.stringify(board));
         player.matrix.forEach((row, y) => {
           row.forEach((value, x) => {
             if (value !== 0) {
-              newBoard[y + player.pos.y][x + player.pos.x] = [value, 'merged'];
+              const boardY = y + player.pos.y;
+              const boardX = x + player.pos.x;
+              if (newBoard[boardY] && newBoard[boardY][boardX]) {
+                newBoard[boardY][boardX] = [value, 'merged'];
+              }
             }
           });
         });
 
-        // Temizlenecek satır var mı diye kontrol et.
+        // 2. Satır temizleme kontrolü
         const rowsToClear = [];
         for (let y = 0; y < newBoard.length; y++) {
           if (newBoard[y].every(cell => cell[1] === 'merged')) {
@@ -101,7 +106,7 @@ const gameReducer = (state, action) => {
           }
         }
 
-        // Eğer temizlenecek satır varsa, onları 'flash' olarak işaretle.
+        // 3. Satır temizleme varsa, animasyonu başlat
         if (rowsToClear.length > 0) {
           const flashShapes = ['F1', 'F2', 'F3', 'F'];
           rowsToClear.forEach(y => {
@@ -110,94 +115,73 @@ const gameReducer = (state, action) => {
               newBoard[y][x] = [randomFlashShapeForRow, 'flash'];
             });
           });
-          // Parlayan tahtayı göster ve oyunu duraklat
           return {
             ...state,
             board: newBoard,
             player: null,
             dropTime: null,
-            isTetrisFlashing: rowsToClear.length === 4, // 4'lüde çerçeveyi yak
+            isTetrisFlashing: rowsToClear.length === 4,
           };
         }
 
-        // Temizlenecek satır yoksa, sadece parçayı kilitle.
-        if (player.pos.y < 1) {
-          return { ...state, board: newBoard, gameOver: true, dropTime: null, player: null };
-        }
+        // 4. Satır temizleme yoksa, direkt yeni parçayı getir
         const lockedState = { ...state, board: newBoard, player: null };
-
         return gameReducer(lockedState, { type: 'SPAWN_NEW_PIECE' });
       }
 
-      // Düşmeye devam et
+      // Henüz bir yere çarpmadıysak, düşmeye devam et
       return {
         ...state,
         player: { ...player, pos: { ...player.pos, y: player.pos.y + 1 } },
       };
     }
 
-
-
-    case 'SPAWN_NEW_PIECE': {
-      const { board: currentBoard, nextPiece } = state;
-
-      // Satırları temizle
-      let clearedRowsCount = 0;
-      const sweptBoard = currentBoard.reduce((ack, row) => {
-        if (row.findIndex(cell => cell[0] === 0) === -1) {
-          clearedRowsCount++;
-          ack.unshift(new Array(BOARD_WIDTH).fill([0, 'clear']));
-          return ack;
-        }
-        ack.push(row);
-        return ack;
-      }, []);
-
-      const newPlayer = {
-        pos: { x: BOARD_WIDTH / 2 - 1, y: 0 },
-        matrix: nextPiece.shape,
-        collided: false,
-      };
-
-      if (checkCollision(newPlayer, sweptBoard, { x: 0, y: 0 })) {
-        return { ...state, board: sweptBoard, gameOver: true, dropTime: null };
-      }
-
-      const newScore = state.score + (clearedRowsCount > 0 ? [10, 30, 60, 100][clearedRowsCount - 1] * (state.level + 1) : 0);
+    case 'CLEAR_ROWS': {
+      const sweptBoard = state.board.filter(row => row.every(cell => cell[1] !== 'flash'));
+      const clearedRowsCount = state.board.length - sweptBoard.length;
+      if (clearedRowsCount === 0) return { ...state };
+      const linePoints = [10, 30, 60, 100];
+      const newScore = state.score + (linePoints[clearedRowsCount - 1] || 0) * (state.level + 1);
       const newRows = state.rows + clearedRowsCount;
       const newLevel = Math.floor(newRows / 10);
       const newDropTime = 1000 / (newLevel + 1) + 200;
-      const shouldFlash = clearedRowsCount === 4;
-
-
-      const newState = {
+      for (let i = 0; i < clearedRowsCount; i++) {
+        sweptBoard.unshift(new Array(BOARD_WIDTH).fill([0, 'clear']));
+      }
+      return {
         ...state,
         board: sweptBoard,
-        player: newPlayer,
-        nextPiece: randomShape(),
         score: newScore,
         rows: newRows,
         level: newLevel,
         dropTime: newDropTime,
-        isFlashing: shouldFlash,
+        isFlashing: false,
+        isTetrisFlashing: false,
       };
-      return newState;
-
     }
 
-    case 'CLEAR_ROWS': {
-      // Tahtadaki 'flash' durumundaki satırları temizle
-      const sweptBoard = state.board.filter(row => row.every(cell => cell[1] !== 'flash'));
-      const clearedRowsCount = BOARD_HEIGHT - sweptBoard.length;
+    case 'SPAWN_NEW_PIECE': {
+      const { board: currentBoard, nextPiece } = state;
+      const newPlayer = {
+        pos: {
+          x: BOARD_WIDTH / 2 - 1,
+          y: INTERNAL_BOARD_HEIGHT - BOARD_HEIGHT
+        },
+        matrix: nextPiece.shape,
+        collided: false,
+      };
 
-      for (let i = 0; i < clearedRowsCount; i++) {
-        sweptBoard.unshift(new Array(BOARD_WIDTH).fill([0, 'clear']));
+      // Game Over kontrolü burada yapılmalı
+      if (checkCollision(newPlayer, currentBoard, { x: 0, y: 0 })) {
+        return { ...state, gameOver: true, dropTime: null, player: null };
       }
-      return { ...state, board: sweptBoard };
-    }
 
-    case 'STOP_FLASHING': { // <-- Bu case'i dışarı taşıyıp parantezlerini ekleyin
-      return { ...state, isFlashing: false };
+      return {
+        ...state,
+        board: currentBoard,
+        player: newPlayer,
+        nextPiece: randomShape(),
+      };
     }
 
     case 'HARD_DROP': {
@@ -208,9 +192,6 @@ const gameReducer = (state, action) => {
       }
       const playerCopy = JSON.parse(JSON.stringify(player));
       playerCopy.pos.y += y;
-
-      // Parçayı en dibe indirilmiş haliyle sadece DROP action'ına teslim et.
-      // Geri kalanını (kilitleme, yeni parça getirme vb.) DROP case'i halledecek.
       return gameReducer({ ...state, player: playerCopy }, { type: 'DROP' });
     }
 
@@ -289,9 +270,11 @@ const Tetris = () => {
       setMascotStatus('gameOver');
       return;
     }
+
+    const visibleBoard = board.slice(INTERNAL_BOARD_HEIGHT - BOARD_HEIGHT);
     let topMostBlock = BOARD_HEIGHT;
-    for (let y = 0; y < board.length; y++) {
-      if (board[y].some(cell => cell[1] === 'merged')) {
+    for (let y = 0; y < visibleBoard.length; y++) {
+      if (visibleBoard[y].some(cell => cell[1] === 'merged')) {
         topMostBlock = y;
         break;
       }

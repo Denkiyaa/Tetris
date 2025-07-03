@@ -1,10 +1,9 @@
-// gameHelpers.js (TAM VE DOĞRU HALİ)
-
 export const BOARD_WIDTH = 10;
 export const BOARD_HEIGHT = 20;
+export const INTERNAL_BOARD_HEIGHT = BOARD_HEIGHT + 4; // GERÇEK YÜKSEKLİK (4 satır gizli)
 
 export const createBoard = () =>
-  Array.from(Array(BOARD_HEIGHT), () => new Array(BOARD_WIDTH).fill([0, 'clear']));
+  Array.from(Array(INTERNAL_BOARD_HEIGHT), () => new Array(BOARD_WIDTH).fill([0, 'clear']));
 
 export const SHAPES = {
   0: { shape: [[0]], color: '0, 0, 0' }, // Boş hücre rengi
@@ -49,19 +48,24 @@ export const randomShape = () => {
 };
 
 export const checkCollision = (player, board, { x: moveX, y: moveY }) => {
-  if (!player?.matrix) {
-    return false;
-  }
-  for (let y = 0; y < player.matrix.length; y += 1) {
-    for (let x = 0; x < player.matrix[y].length; x += 1) {
+  for (let y = 0; y < player.matrix.length; y++) {
+    for (let x = 0; x < player.matrix[y].length; x++) {
       if (player.matrix[y][x] !== 0) {
         const newY = y + player.pos.y + moveY;
         const newX = x + player.pos.x + moveX;
-        if (
-          !board[newY] ||
-          !board[newY][newX] ||
-          board[newY][newX][1] !== 'clear'
-        ) {
+
+        // Tahtanın sol/sağ sınırları
+        if (newX < 0 || newX >= BOARD_WIDTH) {
+          return true;
+        }
+        
+        // Tahtanın alt sınırı
+        if (newY >= INTERNAL_BOARD_HEIGHT) {
+          return true;
+        }
+        
+        // Dolu hücre kontrolü (newY negatif olabilir - üstteki gizli alan)
+        if (newY >= 0 && board[newY][newX][1] !== 'clear') {
           return true;
         }
       }
