@@ -219,7 +219,6 @@ const gameReducer = (state, action) => {
   }
 };
 
-
 const Tetris = () => {
   const [gameState, dispatch] = useReducer(gameReducer, initialState);
   const { board, player, nextPiece, score, rows, level, gameOver, isFlashing } = gameState;
