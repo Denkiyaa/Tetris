@@ -22,6 +22,7 @@ const useHighScores = () => {
   const addScore = useCallback(async (name, score) => {
     try {
       setError(null);
+      const durationInSeconds = 60;
       await postScore(name, score, durationInSeconds);
       // Skor ekledikten sonra listeyi yenile
       await getScores();
