@@ -8,3 +8,20 @@
   /* [YENİ] Yatay çizgiyi aşırı silik hale getirdik */
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
+
+.flashing {
+  /* animasyon: isim süre tekrar_sayısı */
+  animation: flash-effect 0.1s linear 3;
+}
+
+@keyframes flash-effect {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+}

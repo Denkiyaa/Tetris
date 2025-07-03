@@ -5,7 +5,7 @@ import styles from './Board.module.css';
 const Board = ({ board, player, isFlashing }) => {
   const displayBoard = JSON.parse(JSON.stringify(board));
 
-  if (player.matrix) {
+  if (player) {
     player.matrix.forEach((row, y) => {
       row.forEach((value, x) => {
         if (value !== 0) {

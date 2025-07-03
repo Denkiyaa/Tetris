@@ -24,13 +24,19 @@ const initialState = {
   level: 0,
   gameOver: false,
   dropTime: null,
+  lockDelayTimer: null
 };
 
 // --- 2. Oyunun Tüm Mantığını Yöneten Reducer Fonksiyonu ---
+// --- YENİ VE DOĞRU REDUCER ---
+
 const gameReducer = (state, action) => {
+  const { player, board, gameOver } = state;
+
   switch (action.type) {
-    case 'START_GAME':
+    case 'START_GAME': {
       const firstPiece = randomShape();
+      if (!firstPiece) return initialState;
       return {
         ...initialState,
         board: createBoard(),
@@ -42,109 +48,170 @@ const gameReducer = (state, action) => {
         nextPiece: randomShape(),
         dropTime: 1000,
       };
+    }
 
     case 'MOVE_PLAYER': {
-      if (state.gameOver || !state.player) return state;
-      const { player, board } = state;
+      if (gameOver || !player) return state;
       const moveX = action.payload;
-      if (!checkCollision(player, board, { x: moveX, y: 0 })) {
-        return {
-          ...state,
-          player: { ...player, pos: { ...player.pos, x: player.pos.x + moveX } },
-        };
+      if (checkCollision(player, board, { x: moveX, y: 0 })) {
+        return state;
       }
-      return state;
+      return {
+        ...state,
+        player: { ...player, pos: { ...player.pos, x: player.pos.x + moveX } },
+      };
     }
 
     case 'ROTATE_PLAYER': {
-      if (state.gameOver || !state.player) return state;
-      const { player, board } = state;
+      if (gameOver || !player) return state;
       const clonedPlayer = JSON.parse(JSON.stringify(player));
-      const matrix = clonedPlayer.matrix.map((_, index) => clonedPlayer.matrix.map(col => col[index]));
+      const matrix = clonedPlayer.matrix.map((_, i) => clonedPlayer.matrix.map(col => col[i]));
       clonedPlayer.matrix = matrix.map(row => row.reverse());
+
       const pos = clonedPlayer.pos.x;
       let offset = 1;
       while (checkCollision(clonedPlayer, board, { x: 0, y: 0 })) {
         clonedPlayer.pos.x += offset;
         offset = -(offset + (offset > 0 ? 1 : -1));
         if (Math.abs(offset) > clonedPlayer.matrix[0].length) {
-          return state; // Rotasyon başarısız, state'i değiştirme
+          clonedPlayer.pos.x = pos;
+          return state;
         }
       }
       return { ...state, player: clonedPlayer };
     }
 
     case 'DROP': {
-      if (state.gameOver || !state.player) return state;
-      const { player, board } = state;
+      if (gameOver || !player) return state;
 
-      if (!checkCollision(player, board, { x: 0, y: 1 })) {
-        return {
-          ...state,
-          player: { ...player, pos: { ...player.pos, y: player.pos.y + 1 } },
-        };
+      if (checkCollision(player, board, { x: 0, y: 1 })) {
+        // Yere değdi. Parçayı tahtaya işle.
+        const newBoard = JSON.parse(JSON.stringify(board));
+        player.matrix.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (value !== 0) {
+              newBoard[y + player.pos.y][x + player.pos.x] = [value, 'merged'];
+            }
+          });
+        });
+
+        // Temizlenecek satır var mı diye kontrol et.
+        const rowsToClear = [];
+        for (let y = 0; y < newBoard.length; y++) {
+          if (newBoard[y].every(cell => cell[1] === 'merged')) {
+            rowsToClear.push(y);
+          }
+        }
+
+        // Eğer temizlenecek satır varsa, onları 'flash' olarak işaretle.
+        if (rowsToClear.length > 0) {
+          const flashShapes = ['F1', 'F2', 'F3', 'F'];
+          rowsToClear.forEach(y => {
+            const randomFlashShapeForRow = flashShapes[Math.floor(Math.random() * flashShapes.length)];
+            newBoard[y].forEach((_, x) => {
+              newBoard[y][x] = [randomFlashShapeForRow, 'flash'];
+            });
+          });
+          // Parlayan tahtayı göster ve oyunu duraklat
+          return {
+            ...state,
+            board: newBoard,
+            player: null,
+            dropTime: null,
+            isTetrisFlashing: rowsToClear.length === 4, // 4'lüde çerçeveyi yak
+          };
+        }
+
+        // Temizlenecek satır yoksa, sadece parçayı kilitle.
+        if (player.pos.y < 1) {
+          return { ...state, board: newBoard, gameOver: true, dropTime: null };
+        }
+        return { ...state, board: newBoard, player: null };
       }
 
-      // Parça çarptıysa, yeni bir state hesapla
-      const newBoard = JSON.parse(JSON.stringify(board));
-      player.matrix.forEach((row, y) => {
-        row.forEach((value, x) => {
-          if (value !== 0) {
-            newBoard[y + player.pos.y][x + player.pos.x] = [value, 'merged'];
-          }
-        });
-      });
+      // Düşmeye devam et
+      return {
+        ...state,
+        player: { ...player, pos: { ...player.pos, y: player.pos.y + 1 } },
+      };
+    }
 
+    case 'SPAWN_NEW_PIECE': {
+      const { board: currentBoard, nextPiece } = state;
+
+      // Satırları temizle
       let clearedRowsCount = 0;
-      const sweptBoard = newBoard.reduce((ack, row) => {
-        if (row.findIndex(cell => cell[0] === 0) === -1) {
+      const sweptBoard = currentBoard.reduce((ack, row) => {
+        if (row.every(cell => cell[1] === 'merged')) {
           clearedRowsCount++;
-          ack.unshift(Array.from(Array(newBoard[0].length), () => [0, 'clear']));
+          ack.unshift(new Array(BOARD_WIDTH).fill([0, 'clear']));
           return ack;
         }
         ack.push(row);
         return ack;
       }, []);
-      
-      const newPlayerState = {
+
+      const newPlayer = {
         pos: { x: BOARD_WIDTH / 2 - 1, y: 0 },
-        matrix: state.nextPiece.shape,
+        matrix: nextPiece.shape,
         collided: false,
       };
 
-      if (checkCollision(newPlayerState, sweptBoard, { x: 0, y: 0 })) {
-        return { ...state, gameOver: true, dropTime: null };
+      if (checkCollision(newPlayer, sweptBoard, { x: 0, y: 0 })) {
+        return { ...state, board: sweptBoard, gameOver: true, dropTime: null };
       }
 
       const newScore = state.score + (clearedRowsCount > 0 ? [10, 30, 60, 100][clearedRowsCount - 1] * (state.level + 1) : 0);
       const newRows = state.rows + clearedRowsCount;
       const newLevel = Math.floor(newRows / 10);
       const newDropTime = 1000 / (newLevel + 1) + 200;
+      const shouldFlash = clearedRowsCount === 4;
 
-      return {
+
+      const newState = {
         ...state,
         board: sweptBoard,
-        player: newPlayerState,
+        player: newPlayer,
         nextPiece: randomShape(),
         score: newScore,
         rows: newRows,
         level: newLevel,
         dropTime: newDropTime,
+        isFlashing: shouldFlash,
       };
+      return newState;
+
     }
-    
+
+    case 'CLEAR_ROWS': {
+      // Tahtadaki 'flash' durumundaki satırları temizle
+      const sweptBoard = state.board.filter(row => row.every(cell => cell[1] !== 'flash'));
+      const clearedRowsCount = BOARD_HEIGHT - sweptBoard.length;
+
+      for (let i = 0; i < clearedRowsCount; i++) {
+        sweptBoard.unshift(new Array(BOARD_WIDTH).fill([0, 'clear']));
+      }
+      return { ...state, board: sweptBoard };
+    }
+
+    case 'STOP_FLASHING': { // <-- Bu case'i dışarı taşıyıp parantezlerini ekleyin
+      return { ...state, isFlashing: false };
+    }
+
     case 'HARD_DROP': {
-        if (state.gameOver || !state.player) return state;
-        let y = 0;
-        while (!checkCollision(state.player, state.board, { x: 0, y: y + 1 })) {
-            y++;
-        }
-        const playerCopy = JSON.parse(JSON.stringify(state.player));
-        playerCopy.pos.y += y;
-        // Hard drop'un hemen ardından DROP action'ını tetikleyerek çarpışma mantığını yeniden kullan
-        return gameReducer({...state, player: playerCopy }, { type: 'DROP' });
+      if (gameOver || !player) return state;
+      let y = 0;
+      while (!checkCollision(player, board, { x: 0, y: y + 1 })) {
+        y++;
+      }
+      const playerCopy = JSON.parse(JSON.stringify(player));
+      playerCopy.pos.y += y;
+
+      // Önce düşür, sonra yeni parça getirmesi için action zinciri başlat
+      const droppedState = gameReducer({ ...state, player: playerCopy }, { type: 'DROP' });
+      return gameReducer(droppedState, { type: 'SPAWN_NEW_PIECE' });
     }
-    
+
     default:
       return state;
   }
@@ -153,7 +220,7 @@ const gameReducer = (state, action) => {
 
 const Tetris = () => {
   const [gameState, dispatch] = useReducer(gameReducer, initialState);
-  const { board, player, nextPiece, score, rows, level, gameOver } = gameState;
+  const { board, player, nextPiece, score, rows, level, gameOver, isFlashing } = gameState;
 
   const [gamePhase, setGamePhase] = useState('welcome');
   const [nickname, setNickname] = useState('');
@@ -185,7 +252,31 @@ const Tetris = () => {
     }, gameState.dropTime);
     return () => clearInterval(interval);
   }, [gameOver, gameState.dropTime]);
-  
+
+  useEffect(() => {
+    // Eğer oyuncu yoksa (yani bir önceki parça kilitlendiyse)
+    // ve oyun bitmediyse, yeni bir parça getirmesi için action gönder.
+    if (!player && !gameOver) {
+      dispatch({ type: 'SPAWN_NEW_PIECE' });
+    }
+  }, [player, gameOver, dispatch]);
+
+  useEffect(() => {
+    // Tahtada 'flash' hücreleri var mı diye bak
+    const hasFlashedCells = board.some(row => row.some(cell => cell[1] === 'flash'));
+
+    if (hasFlashedCells) {
+      // Varsa, kısa bir süre bekle ve satırları temizle action'ını gönder
+      const timer = setTimeout(() => dispatch({ type: 'CLEAR_ROWS' }), 200);
+      return () => clearTimeout(timer);
+    }
+
+    // Eğer flash yoksa VE oyuncu yoksa VE oyun bitmediyse, yeni parça getir
+    if (!hasFlashedCells && !player && !gameOver) {
+      dispatch({ type: 'SPAWN_NEW_PIECE' });
+    }
+  }, [board, player, gameOver, dispatch]);
+
   // Klavye kontrolleri
   const move = useCallback((event) => {
     if (gameOver || gamePhase !== 'playing') return;
