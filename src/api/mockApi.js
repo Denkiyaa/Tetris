@@ -29,6 +29,8 @@ export const postScore = async (name, score) => {
 
   // 3. Sunucunun imza oluşturmak için kullanacağı veriyi AYNI SIRAYLA birleştiriyoruz.
   const dataToSign = `${name}:${score}:${timestamp}`;
+  console.log('%cCLIENT TARAFI İMZA METNİ:', 'color: blue; font-weight: bold;', dataToSign);
+
 
   // 4. HMAC-SHA256 algoritması ve gizli anahtarımızla veriyi imzalıyoruz.
   const signature = hmacSHA256(dataToSign, secretKey).toString();
