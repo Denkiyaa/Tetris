@@ -21,11 +21,8 @@ export const postScore = async (name, score, durationInSeconds) => {
 
   // 1. İmzalanacak metne 'durationInSeconds' EKLENMELİ
   const dataToSign = `${name}:${score}:${timestamp}:${durationInSeconds}`;
-  console.log('FRONTEND dataToSign:', dataToSign); // Burayı ekle
-
 
   const signature = hmacSHA256(dataToSign, secretKey).toString();
-  console.log('FRONTEND signature:', signature); // Burayı ekle
 
 
   // 2. İstek gövdesine 'duration' alanı EKLENMELİ
@@ -36,9 +33,6 @@ export const postScore = async (name, score, durationInSeconds) => {
     signature,
     duration: durationInSeconds,
   };
-
-  console.log("POST edilen payload:", JSON.stringify(body, null, 2));
-
 
   const response = await fetch(`${API_URL}/scores`, {
     method: 'POST',
