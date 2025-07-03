@@ -33,6 +33,9 @@ export const postScore = async (name, score, durationInSeconds) => {
     duration: durationInSeconds,
   };
 
+  console.log("POST edilen payload:", JSON.stringify(body, null, 2));
+
+
   const response = await fetch(`${API_URL}/scores`, {
     method: 'POST',
     headers: {
